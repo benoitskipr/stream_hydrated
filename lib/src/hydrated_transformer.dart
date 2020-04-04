@@ -7,15 +7,16 @@ class HydratedTransformer<T> extends StreamTransformerBase<T, T> {
   final T Function(String value) hydrate;
   final String Function(T value) persist;
   final String key;
+  final T Function() orElse;
 
-  HydratedTransformer(this.key, T startValue, {this.hydrate, this.persist})
-      : transformer = _buildTransformer(key, startValue, hydrate, persist);
+  HydratedTransformer(this.key, T startValue, this.orElse, {this.hydrate, this.persist})
+      : transformer = _buildTransformer(key, startValue, hydrate, persist, orElse);
 
   @override
   Stream<T> bind(Stream<T> stream) => transformer.bind(stream);
 
   static StreamTransformer<T, T> _buildTransformer<T>(String key, T startValue,
-      T Function(String value) hydrate, String Function(T value) persist) {
+      T Function(String value) hydrate, String Function(T value) persist, T Function() orElse) {
     return StreamTransformer<T, T>((Stream<T> input, bool cancelOnError) {
       StreamController<T> controller;
       StreamSubscription<T> subscription;
@@ -29,6 +30,7 @@ class HydratedTransformer<T> extends StreamTransformerBase<T, T> {
               }
               getHydratedValue(key, hydrate).then((value) {
                 if (value != null) controller.add(value);
+                else if (orElse != null) controller.add(orElse());
               });
             } catch (e, s) {
               controller.addError(e, s);
